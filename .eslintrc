@@ -24,6 +24,7 @@
     "import/extensions": "off",
     "class-methods-use-this": "off",
     "no-unused-expressions": "off",
+    "import/no-extraneous-dependencies": ["error", {"devDependencies": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"]}],
     "@typescript-eslint/no-unused-expressions": ["error"],
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": ["error"]
