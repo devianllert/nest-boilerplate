@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { User } from '../users/users.entity';
+import { Session } from '../sessions/sessions.entity';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { User } from '../users/users.entity';
         url: config.get('database.DB_URL'),
         entities: [
           User,
+          Session,
         ],
         synchronize: true,
         ssl: {
