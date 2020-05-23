@@ -13,7 +13,7 @@ export class MailerService {
 
   async sendRegistrationMail(email: string, username: string, token: string) {
     try {
-      const link = `${this.configService.get<string>('mail.CLIENT_URL')}${token}`;
+      const link = `${this.configService.get<string>('CLIENT_URL')}/verify/${token}`;
 
       await this.mailService.sendMail({
         priority: 'high',
