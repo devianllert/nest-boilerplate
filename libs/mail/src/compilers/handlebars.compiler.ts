@@ -23,7 +23,9 @@ export class HandlebarsCompiler implements TemplateCompiler {
 
     if (!this.precompiledTemplates[templateName]) {
       try {
-        const templateFile = fs.readFileSync(templatePath, 'UTF-8');
+        const templateFile = fs.readFileSync(templatePath, {
+          encoding: 'utf-8',
+        });
 
         this.precompiledTemplates[templateName] = handlebars.compile(templateFile, options?.options);
       } catch (err) {

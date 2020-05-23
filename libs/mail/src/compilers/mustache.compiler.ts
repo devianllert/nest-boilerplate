@@ -15,7 +15,9 @@ export class MustacheCompiler implements TemplateCompiler {
 
     if (!this.precompiledTemplates[templateName]) {
       try {
-        const templateFile = readFileSync(templatePath, 'UTF-8');
+        const templateFile = readFileSync(templatePath, {
+          encoding: 'utf-8',
+        });
 
         this.precompiledTemplates[templateName] = compile(templateFile);
       } catch (err) {
