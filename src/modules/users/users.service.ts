@@ -23,6 +23,12 @@ export class UsersService {
     return user;
   }
 
+  async findById(id: number): Promise<User | undefined> {
+    const user = await this.usersRepository.findOne({ id });
+
+    return user;
+  }
+
   async createUser(payload: CreateUserDTO): Promise<User> {
     try {
       const user = await this.usersRepository.createUser(payload);

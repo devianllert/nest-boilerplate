@@ -3,14 +3,20 @@ import {
   Get,
   UseInterceptors,
   ClassSerializerInterceptor,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOkResponse,
+  ApiBearerAuth,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
-import { UsersService } from './users.service';
+import { GetUser } from '../../decorators/user.decorator';
+
 import { User } from './users.entity';
+import { UsersService } from './users.service';
 
 @ApiTags('Users')
 @Controller('users')
@@ -22,5 +28,14 @@ export class UsersController {
   @ApiOkResponse()
   async findAll(): Promise<User[]> {
     return this.usersService.findAll();
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiOkResponse()
+  findMe(@GetUser() user: User): User {
+    return user;
   }
 }
