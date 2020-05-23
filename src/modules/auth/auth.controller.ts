@@ -6,7 +6,6 @@ import {
   Body,
   Ip,
   Headers,
-  UseGuards,
   Response,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,15 +13,15 @@ import {
   ApiTags,
   ApiOkResponse,
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
 import { Response as ExpressResponse } from 'express';
 
 import { User } from '../users/users.entity';
+
 import { GetUser } from '../../decorators/user.decorator';
 import { Cookie } from '../../decorators/cookie.decorator';
+import { AuthorizeGuard } from '../../guards/auth.guard';
 
 import { AuthService } from './auth.service';
 
@@ -65,10 +64,8 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
+  @AuthorizeGuard()
   @ApiBadRequestResponse({ description: 'Bad Request' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiOkResponse()
   async logout(
     @GetUser('id') userId: number,

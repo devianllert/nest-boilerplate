@@ -3,16 +3,10 @@ import {
   Get,
   UseInterceptors,
   ClassSerializerInterceptor,
-  UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOkResponse,
-  ApiBearerAuth,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
+import { ApiTags, ApiOkResponse } from '@nestjs/swagger';
 
+import { AuthorizeGuard } from '../../guards/auth.guard';
 import { GetUser } from '../../decorators/user.decorator';
 
 import { User } from './users.entity';
@@ -31,9 +25,7 @@ export class UsersController {
   }
 
   @Get('me')
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @AuthorizeGuard()
   @ApiOkResponse()
   findMe(@GetUser() user: User): User {
     return user;

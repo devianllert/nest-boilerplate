@@ -2,21 +2,15 @@ import {
   Controller,
   Get,
   Param,
-  UseGuards,
   UsePipes,
   ValidationPipe,
   Delete,
   UseInterceptors,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import {
-  ApiTags,
-  ApiBearerAuth,
-  ApiOkResponse,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOkResponse } from '@nestjs/swagger';
 
+import { AuthorizeGuard } from '../../guards/auth.guard';
 import { GetUser } from '../../decorators/user.decorator';
 
 import { Session } from './sessions.entity';
@@ -31,9 +25,7 @@ export class SessionsController {
   constructor(private sessionService: SessionsService) {}
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @AuthorizeGuard()
   @ApiOkResponse()
   async findAllSessions(@GetUser('id') id: number): Promise<Session[]> {
     const sessions = await this.sessionService.findAllSessions(id);
@@ -42,9 +34,7 @@ export class SessionsController {
   }
 
   @Get(':token')
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @AuthorizeGuard()
   @ApiOkResponse()
   async findSession(@Param('token') token: string): Promise<Session | undefined> {
     const session = await this.sessionService.findSession(token);
@@ -53,18 +43,14 @@ export class SessionsController {
   }
 
   @Delete()
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @AuthorizeGuard()
   @ApiOkResponse()
   async deleteAllSessions(@GetUser('id') id: number): Promise<void> {
     await this.sessionService.clearAllSessions(id);
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @AuthorizeGuard()
   @ApiOkResponse()
   async deleteSession(@GetUser('id') userId: number, @Param('id') id: number): Promise<void> {
     await this.sessionService.clearSessionById(userId, id);
