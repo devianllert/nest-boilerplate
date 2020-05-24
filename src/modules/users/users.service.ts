@@ -1,5 +1,6 @@
-import { Injectable, InternalServerErrorException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { hash, genSalt, compare } from 'bcrypt';
 
 import { User } from './users.entity';
 import { UsersRepository } from './users.repository';
@@ -23,6 +24,14 @@ export class UsersService {
     return user;
   }
 
+  async validateUser(emailOrUsername: string, password: string): Promise<User | false> {
+    const user = await this.findByEmailOrUsername(emailOrUsername);
+
+    const isValid = user && (await compare(password, user.password));
+
+    return (isValid && user) ?? false;
+  }
+
   async findById(id: number): Promise<User | undefined> {
     const user = await this.usersRepository.findOne({ id });
 
@@ -30,19 +39,53 @@ export class UsersService {
   }
 
   async createUser(payload: CreateUserDTO): Promise<User> {
-    try {
-      const user = await this.usersRepository.createUser(payload);
+    const {
+      email,
+      username,
+      password,
+    } = payload;
 
-      return user;
-    } catch (error) {
-      if (error.code === '23505') throw new ConflictException({ code: 'REGISTER_ERROR' });
+    const salt = await genSalt(10);
+    const hashedPassword = await hash(password, salt);
 
-      throw new InternalServerErrorException();
-    }
+    const user = await this.usersRepository.createUser({
+      email,
+      username,
+      password: hashedPassword,
+    });
+
+    return user;
   }
 
-  async updateUser(id: number, payload: UpdateUserDTO): Promise<void> {
-    await this.usersRepository.update(id, payload);
+  // TODO: rewrite this method
+  async updateUser(user: User, payload: UpdateUserDTO): Promise<void> {
+    const {
+      password,
+      newPassword,
+      ...otherData
+    } = payload;
+
+    const isPasswordCorrect = await compare(password, user.password);
+
+    // for update user we need current user's password
+    if (!isPasswordCorrect) {
+      throw new BadRequestException();
+    }
+
+    const newUserData: Partial<User> = {
+      ...otherData,
+    };
+
+    // if user want to change password
+    // TODO: send email when password changed
+    if (newPassword) {
+      const salt = await genSalt(10);
+      const hashedPassword = await hash(newPassword, salt);
+
+      newUserData.password = hashedPassword;
+    }
+
+    await this.usersRepository.update(user.id, newUserData);
   }
 
   async updateVerifyEmail(id: number, isVerified: boolean): Promise<void> {

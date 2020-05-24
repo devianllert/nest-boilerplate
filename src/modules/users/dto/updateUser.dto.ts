@@ -6,6 +6,7 @@ import {
   IsUrl,
   MinLength,
   MaxLength,
+  IsDefined,
 } from 'class-validator';
 
 export class UpdateUserDTO {
@@ -15,11 +16,18 @@ export class UpdateUserDTO {
   readonly email?: string;
 
   @ApiPropertyOptional()
+  @IsDefined()
+  @IsString()
+  @MinLength(6)
+  @MaxLength(20)
+  readonly password: string;
+
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MinLength(6)
   @MaxLength(20)
-  readonly password?: string;
+  readonly newPassword?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

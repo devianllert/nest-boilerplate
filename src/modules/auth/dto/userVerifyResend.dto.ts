@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsDefined } from 'class-validator';
 
-export class UserVerifyResendDto {
+export class UserVerifyResendDTO {
   @ApiProperty()
   @IsEmail()
   @IsDefined()

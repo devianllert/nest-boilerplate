@@ -14,6 +14,7 @@ import {
   ApiOkResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
+  ApiConflictResponse,
 } from '@nestjs/swagger';
 import { Response as ExpressResponse } from 'express';
 
@@ -28,8 +29,8 @@ import { AuthService } from './auth.service';
 import { UserLoginDTO } from './dto/userLogin.dto';
 import { UserRegisterDTO } from './dto/userRegister.dto';
 import { JwtDTO } from './dto/jwt.dto';
-import { UserVerifyDto } from './dto/userVerify.dto';
-import { UserVerifyResendDto } from './dto/userVerifyResend.dto';
+import { UserVerifyDTO } from './dto/userVerify.dto';
+import { UserVerifyResendDTO } from './dto/userVerifyResend.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -38,6 +39,8 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
+  @ApiConflictResponse()
+  @ApiOkResponse()
   async register(@Body() payload: UserRegisterDTO): Promise<User> {
     const user = await this.authService.register(payload);
 
@@ -45,16 +48,22 @@ export class AuthController {
   }
 
   @Post('register/verify')
-  async registerVerify(@Body() payload: UserVerifyDto): Promise<void> {
+  @ApiBadRequestResponse({ description: 'Bad Request' })
+  @ApiOkResponse()
+  async registerVerify(@Body() payload: UserVerifyDTO): Promise<void> {
     await this.authService.verifyEmail(payload.email, payload.token);
   }
 
   @Post('register/verify/resend')
-  async resendVerify(@Body() payload: UserVerifyResendDto): Promise<void> {
+  @ApiBadRequestResponse({ description: 'Bad Request' })
+  @ApiOkResponse()
+  async resendVerify(@Body() payload: UserVerifyResendDTO): Promise<void> {
     await this.authService.resendVerifyEmail(payload.email);
   }
 
   @Post('login')
+  @ApiBadRequestResponse({ description: 'Bad Request' })
+  @ApiOkResponse()
   async login(
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
@@ -70,7 +79,7 @@ export class AuthController {
       httpOnly: true,
     });
 
-    res.json(tokens);
+    res.status(200).json(tokens);
 
     return tokens;
   }
@@ -93,7 +102,7 @@ export class AuthController {
 
     await this.authService.logout(userId, refreshToken);
 
-    res.end();
+    res.status(200).end();
   }
 
   @Post('refresh')
@@ -116,7 +125,7 @@ export class AuthController {
       httpOnly: true,
     });
 
-    res.json(tokens);
+    res.status(200).json(tokens);
 
     return tokens;
   }

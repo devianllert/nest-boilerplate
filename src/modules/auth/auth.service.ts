@@ -3,10 +3,10 @@ import {
   BadRequestException,
   UnauthorizedException,
   HttpException,
+  ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { compare, genSalt, hash } from 'bcrypt';
 import * as uuid from 'uuid';
 
 import { detect } from '../../utils/parseUserAgent';
@@ -28,15 +28,15 @@ export class AuthService {
     private sessionsService: SessionsService,
     private mailerService: MailerService,
     private jwtService: JwtService,
-    private configService: ConfigService,
   ) {}
 
   async validateUser(payload: UserLoginDTO): Promise<User> {
     const { emailOrUsername, password } = payload;
 
-    const user = await this.usersService.findByEmailOrUsername(emailOrUsername);
+    const user = await this.usersService.validateUser(emailOrUsername, password);
 
-    if (!(user && (await compare(password, user.password)))) {
+    if (!user) {
+      // TODO: add error description
       throw new BadRequestException({ code: 'LOGIN_ERROR' });
     }
 
@@ -58,9 +58,9 @@ export class AuthService {
 
     if (!user || !token) throw new BadRequestException();
 
-    // ...verify token
+    // TODO: verify token
 
-    this.usersService.updateVerifyEmail(user.id, true);
+    await this.usersService.updateVerifyEmail(user.id, true);
   }
 
   async resendVerifyEmail(email: string) {
@@ -68,13 +68,16 @@ export class AuthService {
 
     if (!user || user.isVerified) throw new BadRequestException();
 
-    this.sendVerification(user.email, user.username);
+    // TODO: send different mail for resending
+    await this.sendVerification(user.email, user.username);
   }
 
+  // TODO: connect redis for email verification
+  // TODO?: create uuid token in mailerService
   async sendVerification(email: string, username: string) {
     const emailToken = uuid.v4();
 
-    this.mailerService.sendRegistrationMail(
+    await this.mailerService.sendRegistrationMail(
       email,
       username,
       emailToken,
@@ -82,18 +85,20 @@ export class AuthService {
   }
 
   async register(payload: UserRegisterDTO): Promise<User> {
-    const salt = await genSalt(10);
-    const hashedPassword = await hash(payload.password, salt);
+    try {
+      const user = await this.usersService.createUser(payload);
 
-    const user = await this.usersService.createUser({
-      email: payload.email,
-      username: payload.username,
-      password: hashedPassword,
-    });
+      // Don't wait for sending a message
+      this.sendVerification(user.email, user.username);
 
-    this.sendVerification(user.email, user.username);
+      // We can create tokens and send them to register and login in one step.
+      return user;
+    } catch (error) {
+      // Postgres throw 23505 error when a value in a column already exists
+      if (error.code === '23505') throw new ConflictException({ code: 'REGISTER_ERROR' });
 
-    return user;
+      throw new InternalServerErrorException();
+    }
   }
 
   async login(ip: string, userAgent: string, payload: UserLoginDTO): Promise<Tokens> {
@@ -108,6 +113,7 @@ export class AuthService {
 
     const tokens = this.createTokens(jwtPayload);
 
+    // TODO?: move parsing ua in createSession
     const device = detect(userAgent);
 
     await this.sessionsService.createSession({
@@ -138,6 +144,7 @@ export class AuthService {
     if (isExpire) {
       await this.sessionsService.clearSessionByToken(session.userId, token);
 
+      // TODO: add error description
       throw new HttpException('TOKEN_EXPIRED', 403);
     }
 
