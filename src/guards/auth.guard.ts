@@ -1,6 +1,6 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 import { RolesGuard } from './role.guard';
 import { UserRole } from '../modules/users/users.entity';
