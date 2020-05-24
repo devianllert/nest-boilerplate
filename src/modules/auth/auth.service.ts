@@ -1,7 +1,6 @@
 import {
   Injectable,
   BadRequestException,
-  NotFoundException,
   UnauthorizedException,
   HttpException,
 } from '@nestjs/common';
@@ -54,16 +53,30 @@ export class AuthService {
     };
   }
 
-  async sendVerification(email: string) {
+  async verifyEmail(email: string, token: string) {
     const user = await this.usersService.findByEmailOrUsername(email);
 
-    if (!user) throw new NotFoundException({ code: 'VERIFY_USER_NOT_FOUND' });
+    if (!user || !token) throw new BadRequestException();
 
+    // ...verify token
+
+    this.usersService.updateVerifyEmail(user.id, true);
+  }
+
+  async resendVerifyEmail(email: string) {
+    const user = await this.usersService.findByEmailOrUsername(email);
+
+    if (!user || user.isVerified) throw new BadRequestException();
+
+    this.sendVerification(user.email, user.username);
+  }
+
+  async sendVerification(email: string, username: string) {
     const emailToken = uuid.v4();
 
     this.mailerService.sendRegistrationMail(
-      user.email,
-      user.username,
+      email,
+      username,
       emailToken,
     );
   }
@@ -78,7 +91,7 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    this.sendVerification(user.email);
+    this.sendVerification(user.email, user.username);
 
     return user;
   }

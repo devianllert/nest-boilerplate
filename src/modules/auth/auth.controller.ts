@@ -28,6 +28,8 @@ import { AuthService } from './auth.service';
 import { UserLoginDTO } from './dto/userLogin.dto';
 import { UserRegisterDTO } from './dto/userRegister.dto';
 import { JwtDTO } from './dto/jwt.dto';
+import { UserVerifyDto } from './dto/userVerify.dto';
+import { UserVerifyResendDto } from './dto/userVerifyResend.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -40,6 +42,16 @@ export class AuthController {
     const user = await this.authService.register(payload);
 
     return user;
+  }
+
+  @Post('register/verify')
+  async registerVerify(@Body() payload: UserVerifyDto): Promise<void> {
+    await this.authService.verifyEmail(payload.email, payload.token);
+  }
+
+  @Post('register/verify/resend')
+  async resendVerify(@Body() payload: UserVerifyResendDto): Promise<void> {
+    await this.authService.resendVerifyEmail(payload.email);
   }
 
   @Post('login')

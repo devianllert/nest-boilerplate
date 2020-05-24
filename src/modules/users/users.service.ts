@@ -44,4 +44,10 @@ export class UsersService {
   async updateUser(id: number, payload: UpdateUserDTO): Promise<void> {
     await this.usersRepository.update(id, payload);
   }
+
+  async updateVerifyEmail(id: number, isVerified: boolean): Promise<void> {
+    await this.usersRepository.update(id, {
+      isVerified,
+    });
+  }
 }
