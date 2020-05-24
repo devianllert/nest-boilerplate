@@ -12,8 +12,10 @@ export default () => ({
     MAIL_USER_NAME: process.env.MAIL_USER_NAME,
     MAIL_USER_PASS: process.env.MAIL_USER_PASS,
   },
-  jwt: {
+  token: {
     ACCESS_SECRET: process.env.ACCESS_SECRET,
     ACCESS_TIMEOUT: process.env.ACCESS_TIMEOUT,
+    REFRESH_TIMEOUT: process.env.REFRESH_TIMEOUT,
+    EMAIL_TIMEOUT: process.env.EMAIL_TIMEOUT,
   },
 });
