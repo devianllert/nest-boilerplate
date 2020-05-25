@@ -2,6 +2,8 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hash, genSalt, compare } from 'bcrypt';
 
+import { MailerService } from '../mailer/mailer.service';
+
 import { User } from './users.entity';
 import { UsersRepository } from './users.repository';
 
@@ -10,7 +12,10 @@ import { UpdateUserDTO } from './dto/updateUser.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(UsersRepository) private readonly usersRepository: UsersRepository) {}
+  constructor(
+    @InjectRepository(UsersRepository) private readonly usersRepository: UsersRepository,
+    private mailerService: MailerService,
+  ) {}
 
   async findAll(): Promise<User[]> {
     const users = await this.usersRepository.find();
@@ -77,7 +82,6 @@ export class UsersService {
     };
 
     // if user want to change password
-    // TODO: send email when password changed
     if (newPassword) {
       const salt = await genSalt(10);
       const hashedPassword = await hash(newPassword, salt);
@@ -86,6 +90,10 @@ export class UsersService {
     }
 
     await this.usersRepository.update(user.id, newUserData);
+
+    if (newPassword) {
+      this.mailerService.sendPasswordChangedMail(user.email, user.username);
+    }
   }
 
   async updateVerifyEmail(id: number, isVerified: boolean): Promise<void> {
