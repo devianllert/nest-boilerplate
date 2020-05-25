@@ -30,4 +30,20 @@ export class MailerService {
       console.log(error);
     }
   }
+
+  async sendPasswordChangedMail(email: string, username: string) {
+    try {
+      await this.mailService.sendMail({
+        priority: 'high',
+        to: email,
+        subject: 'Password changed',
+        template: 'password-changed',
+        context: {
+          username,
+        },
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }
