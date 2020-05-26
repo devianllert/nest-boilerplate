@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsDefined } from 'class-validator';
 
-export class UserVerifyDTO {
+export class UserForgotDTO {
   @ApiProperty()
-  @IsString()
   @IsDefined()
-  token: string;
+  @IsString()
+  readonly emailOrUsername: string;
 }

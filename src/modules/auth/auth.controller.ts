@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { Response as ExpressResponse } from 'express';
 
+
 import { User } from '../users/users.entity';
 
 import { GetUser } from '../../decorators/user.decorator';
@@ -31,6 +32,8 @@ import { UserRegisterDTO } from './dto/userRegister.dto';
 import { JwtDTO } from './dto/jwt.dto';
 import { UserVerifyDTO } from './dto/userVerify.dto';
 import { UserVerifyResendDTO } from './dto/userVerifyResend.dto';
+import { UserForgotDTO } from './dto/UserForgot.dto';
+import { UserResetDTO } from './dto/UserReset.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -38,8 +41,23 @@ import { UserVerifyResendDTO } from './dto/userVerifyResend.dto';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Post('forgot')
+  @ApiBadRequestResponse({ description: 'Bad Request' })
+  @ApiOkResponse()
+  async forgot(@Body() payload: UserForgotDTO): Promise<void> {
+    await this.authService.forgot(payload.emailOrUsername);
+  }
+
+  @Post('reset')
+  @ApiBadRequestResponse({ description: 'Bad Request' })
+  @ApiOkResponse()
+  async reset(@Body() payload: UserResetDTO): Promise<void> {
+    await this.authService.reset(payload.token, payload.password);
+  }
+
   @Post('register')
   @ApiConflictResponse()
+  @ApiBadRequestResponse({ description: 'Bad Request' })
   @ApiOkResponse()
   async register(@Body() payload: UserRegisterDTO): Promise<User> {
     const user = await this.authService.register(payload);
@@ -51,7 +69,7 @@ export class AuthController {
   @ApiBadRequestResponse({ description: 'Bad Request' })
   @ApiOkResponse()
   async registerVerify(@Body() payload: UserVerifyDTO): Promise<void> {
-    await this.authService.verifyEmail(payload.email, payload.token);
+    await this.authService.verifyEmail(payload.token);
   }
 
   @Post('register/verify/resend')

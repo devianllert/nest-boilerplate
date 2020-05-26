@@ -96,8 +96,15 @@ export class UsersService {
     }
   }
 
-  async updateVerifyEmail(id: number, isVerified: boolean): Promise<void> {
-    await this.usersRepository.update(id, {
+  async updatePassword(email: string, password: string) {
+    const salt = await genSalt(10);
+    const hashedPassword = await hash(password, salt);
+
+    await this.usersRepository.update({ email }, { password: hashedPassword });
+  }
+
+  async updateVerifyEmail(email: string, isVerified: boolean): Promise<void> {
+    await this.usersRepository.update({ email }, {
       isVerified,
     });
   }

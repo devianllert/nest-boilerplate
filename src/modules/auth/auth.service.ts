@@ -6,7 +6,14 @@ import {
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import {
+  sign,
+  verify,
+  JsonWebTokenError,
+  TokenExpiredError,
+} from 'jsonwebtoken';
 import * as uuid from 'uuid';
 
 import { detect } from '../../utils/parseUserAgent';
@@ -28,6 +35,7 @@ export class AuthService {
     private sessionsService: SessionsService,
     private mailerService: MailerService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async validateUser(payload: UserLoginDTO): Promise<User> {
@@ -37,7 +45,7 @@ export class AuthService {
 
     if (!user) {
       // TODO: add error description
-      throw new BadRequestException({ code: 'LOGIN_ERROR' });
+      throw new BadRequestException('LOGIN_ERROR');
     }
 
     return user;
@@ -53,14 +61,26 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(email: string, token: string) {
-    const user = await this.usersService.findByEmailOrUsername(email);
+  async verifyEmail(token: string) {
+    try {
+      const { email } = verify(token, this.configService.get('token.EMAIL_SECRET')!) as { email: string };
 
-    if (!user || !token) throw new BadRequestException();
+      const user = await this.usersService.findByEmailOrUsername(email);
 
-    // TODO: verify token
+      // TODO?: catch if user not found
 
-    await this.usersService.updateVerifyEmail(user.id, true);
+      if (user) {
+        await this.usersService.updateVerifyEmail(user.email, true);
+      }
+    } catch (error) {
+      if (error instanceof TokenExpiredError) {
+        throw new BadRequestException('TOKEN_EXPIRED');
+      }
+
+      if (error instanceof JsonWebTokenError) {
+        throw new BadRequestException('TOKEN_INVALID');
+      }
+    }
   }
 
   async resendVerifyEmail(email: string) {
@@ -68,20 +88,17 @@ export class AuthService {
 
     if (!user || user.isVerified) throw new BadRequestException();
 
-    // TODO: send different mail for resending
-    await this.sendVerification(user.email, user.username);
+    // TODO?: send different mail for resending
+    await this.sendVerification(user);
   }
 
-  // TODO: connect redis for email verification
-  // TODO?: create uuid token in mailerService
-  async sendVerification(email: string, username: string) {
-    const emailToken = uuid.v4();
+  // TODO?: create token in mailerService
+  async sendVerification(user: User) {
+    // We can create jwt token or can create UUID token and write it to something like Redis
+    const emailToken = sign({ email: user.email, id: user.id }, this.configService.get('token.EMAIL_SECRET')!);
+    // const resetToken = uuid.v4();
 
-    await this.mailerService.sendRegistrationMail(
-      email,
-      username,
-      emailToken,
-    );
+    await this.mailerService.sendRegistrationMail(user.email, user.username, emailToken);
   }
 
   async register(payload: UserRegisterDTO): Promise<User> {
@@ -89,13 +106,13 @@ export class AuthService {
       const user = await this.usersService.createUser(payload);
 
       // Don't wait for sending a message
-      this.sendVerification(user.email, user.username);
+      this.sendVerification(user);
 
       // We can create tokens and send them to register and login in one step.
       return user;
     } catch (error) {
       // Postgres throw 23505 error when a value in a column already exists
-      if (error.code === '23505') throw new ConflictException({ code: 'REGISTER_ERROR' });
+      if (error.code === '23505') throw new ConflictException('REGISTER_ERROR');
 
       throw new InternalServerErrorException();
     }
@@ -169,5 +186,43 @@ export class AuthService {
     });
 
     return tokens;
+  }
+
+  async forgot(emailOrUsername: string): Promise<void> {
+    const user = await this.usersService.findByEmailOrUsername(emailOrUsername);
+
+    if (!user) {
+      throw new BadRequestException();
+    }
+
+    // We can create jwt token or can create UUID token and write it to something like Redis
+    const resetToken = sign({ email: user.email, id: user.id }, this.configService.get('token.RESET_SECRET')!);
+    // const resetToken = uuid.v4();
+
+    await this.mailerService.sendResetPasswordMail(user.email, user.username, resetToken);
+  }
+
+  async reset(token: string, password: string): Promise<void> {
+    try {
+      const { email } = verify(token, this.configService.get('token.RESET_SECRET')!) as { email: string };
+
+      const user = await this.usersService.findByEmailOrUsername(email);
+
+      if (user) {
+        await this.usersService.updatePassword(user.email, password);
+
+        this.sessionsService.clearAllSessions(user.id);
+
+        await this.mailerService.sendPasswordChangedMail(user.email, user.username);
+      }
+    } catch (error) {
+      if (error instanceof TokenExpiredError) {
+        throw new BadRequestException('TOKEN_EXPIRED');
+      }
+
+      if (error instanceof JsonWebTokenError) {
+        throw new BadRequestException('TOKEN_INVALID');
+      }
+    }
   }
 }
