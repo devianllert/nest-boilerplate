@@ -13,14 +13,32 @@ export class MailerService {
 
   async sendRegistrationMail(email: string, username: string, token: string) {
     try {
-      // TODO: add redis and send /verify/${token}
-      const link = `${this.configService.get<string>('CLIENT_URL')}/verify?email=${email}&token=${token}`;
+      const link = `${this.configService.get<string>('CLIENT_URL')}/verify/${token}`;
 
       await this.mailService.sendMail({
         priority: 'high',
         to: email,
         subject: 'Registration',
         template: 'email-verification',
+        context: {
+          username,
+          link,
+        },
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async sendResetPasswordMail(email: string, username: string, token: string) {
+    try {
+      const link = `${this.configService.get<string>('CLIENT_URL')}/reset/${token}`;
+
+      await this.mailService.sendMail({
+        priority: 'high',
+        to: email,
+        subject: 'Reset password',
+        template: 'reset-password',
         context: {
           username,
           link,
