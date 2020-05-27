@@ -96,7 +96,7 @@ export class UsersService {
     }
   }
 
-  async updatePassword(email: string, password: string) {
+  async updatePassword(email: string, password: string): Promise<void> {
     const salt = await genSalt(10);
     const hashedPassword = await hash(password, salt);
 

@@ -27,6 +27,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { Tokens } from './interfaces/tokens.interface';
 import { UserLoginDTO } from './dto/userLogin.dto';
 import { UserRegisterDTO } from './dto/userRegister.dto';
+import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
 export class AuthService {
@@ -35,6 +36,7 @@ export class AuthService {
     private sessionsService: SessionsService,
     private mailerService: MailerService,
     private jwtService: JwtService,
+    private loggerService: LoggerService,
     private configService: ConfigService,
   ) {}
 
@@ -44,7 +46,6 @@ export class AuthService {
     const user = await this.usersService.validateUser(emailOrUsername, password);
 
     if (!user) {
-      // TODO: add error description
       throw new BadRequestException('LOGIN_ERROR');
     }
 
@@ -61,7 +62,7 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(token: string) {
+  async verifyEmail(token: string): Promise<void> {
     try {
       const { email } = verify(token, this.configService.get('token.EMAIL_SECRET')!) as { email: string };
 
@@ -80,16 +81,18 @@ export class AuthService {
       if (error instanceof JsonWebTokenError) {
         throw new BadRequestException('TOKEN_INVALID');
       }
+
+      this.loggerService.error(error.message, error.trace, error.context);
     }
   }
 
-  async resendVerifyEmail(email: string) {
+  async resendVerifyEmail(email: string): Promise<void> {
     const user = await this.usersService.findByEmailOrUsername(email);
 
     if (!user || user.isVerified) throw new BadRequestException();
 
     // TODO?: send different mail for resending
-    await this.sendVerification(user);
+    this.sendVerification(user);
   }
 
   // TODO?: create token in mailerService
@@ -113,6 +116,8 @@ export class AuthService {
     } catch (error) {
       // Postgres throw 23505 error when a value in a column already exists
       if (error.code === '23505') throw new ConflictException('REGISTER_ERROR');
+
+      this.loggerService.error(error.message, error.trace, error.context);
 
       throw new InternalServerErrorException();
     }
@@ -161,7 +166,6 @@ export class AuthService {
     if (isExpire) {
       await this.sessionsService.clearSessionByToken(session.userId, token);
 
-      // TODO: add error description
       throw new HttpException('TOKEN_EXPIRED', 403);
     }
 
@@ -199,7 +203,7 @@ export class AuthService {
     const resetToken = sign({ email: user.email, id: user.id }, this.configService.get('token.RESET_SECRET')!);
     // const resetToken = uuid.v4();
 
-    await this.mailerService.sendResetPasswordMail(user.email, user.username, resetToken);
+    this.mailerService.sendResetPasswordMail(user.email, user.username, resetToken);
   }
 
   async reset(token: string, password: string): Promise<void> {

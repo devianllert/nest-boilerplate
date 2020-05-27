@@ -4,14 +4,19 @@ import { ConfigService } from '@nestjs/config';
 
 import { MailService } from '@app/mail';
 
+import { LoggerService } from '../logger/logger.service';
+
 @Injectable()
 export class MailerService {
   constructor(
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly loggerService: LoggerService,
+  ) {
+    this.loggerService.setContext('MailerService');
+  }
 
-  async sendRegistrationMail(email: string, username: string, token: string) {
+  async sendRegistrationMail(email: string, username: string, token: string): Promise<void> {
     try {
       const link = `${this.configService.get<string>('CLIENT_URL')}/verify/${token}`;
 
@@ -26,11 +31,11 @@ export class MailerService {
         },
       });
     } catch (error) {
-      console.log(error);
+      this.loggerService.error(error.message, error.trace, error.context);
     }
   }
 
-  async sendResetPasswordMail(email: string, username: string, token: string) {
+  async sendResetPasswordMail(email: string, username: string, token: string): Promise<void> {
     try {
       const link = `${this.configService.get<string>('CLIENT_URL')}/reset/${token}`;
 
@@ -45,11 +50,11 @@ export class MailerService {
         },
       });
     } catch (error) {
-      console.log(error);
+      this.loggerService.error(error.message, error.trace, error.context);
     }
   }
 
-  async sendPasswordChangedMail(email: string, username: string) {
+  async sendPasswordChangedMail(email: string, username: string): Promise<void> {
     try {
       await this.mailService.sendMail({
         priority: 'high',
@@ -61,7 +66,7 @@ export class MailerService {
         },
       });
     } catch (error) {
-      console.log(error);
+      this.loggerService.error(error.message, error.trace, error.context);
     }
   }
 }

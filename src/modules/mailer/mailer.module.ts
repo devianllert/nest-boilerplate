@@ -5,9 +5,11 @@ import { ConfigService } from '@nestjs/config';
 import { MailModule, MustacheCompiler } from '@app/mail';
 
 import { MailerService } from './mailer.service';
+import { LoggerModule } from '../logger/logger.module';
 
 @Module({
   imports: [
+    LoggerModule,
     MailModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
