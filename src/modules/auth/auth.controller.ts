@@ -18,7 +18,6 @@ import {
 } from '@nestjs/swagger';
 import { Response as ExpressResponse } from 'express';
 
-
 import { User } from '../users/users.entity';
 
 import { GetUser } from '../../decorators/user.decorator';

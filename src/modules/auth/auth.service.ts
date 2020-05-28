@@ -13,6 +13,7 @@ import {
   JsonWebTokenError,
   TokenExpiredError,
 } from 'jsonwebtoken';
+import { getParser } from 'bowser';
 import * as uuid from 'uuid';
 
 import { UsersService } from '../users/users.service';
@@ -20,11 +21,8 @@ import { SessionsService } from '../sessions/sessions.service';
 import { MailerService } from '../mailer/mailer.service';
 import { LoggerService } from '../logger/logger.service';
 
-import { detect } from '../../utils/parseUserAgent';
-
 import { User } from '../users/users.entity';
 import { Tokens } from './interfaces/tokens.interface';
-
 
 @Injectable()
 export class AuthService {
@@ -179,11 +177,13 @@ export class AuthService {
     const tokens = this.createTokens(jwtPayload);
 
     // TODO?: move parsing ua in createSession
-    const device = detect(userAgent);
+    const device = getParser(userAgent);
+    const browser = device.getBrowser();
+    const os = device.getOS();
 
     await this.sessionsService.createSession({
-      os: device.os,
-      browser: `${device.name} ${device.version}`,
+      os: (!!os.name && `${os.name} ${os.versionName}`) || 'Unknown OS',
+      browser: (!!browser.name && `${browser.name} ${browser.version}`) || 'Unknown Browser',
       userAgent,
       ip,
       token: tokens.refreshToken,
