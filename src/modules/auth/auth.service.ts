@@ -29,20 +29,24 @@ import { Tokens } from './interfaces/tokens.interface';
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
-    private sessionsService: SessionsService,
-    private mailerService: MailerService,
-    private jwtService: JwtService,
-    private loggerService: LoggerService,
-    private configService: ConfigService,
-  ) {}
+    private readonly usersService: UsersService,
+    private readonly sessionsService: SessionsService,
+    private readonly mailerService: MailerService,
+    private readonly jwtService: JwtService,
+    private readonly loggerService: LoggerService,
+    private readonly configService: ConfigService,
+  ) {
+    this.loggerService.setContext('AuthService');
+  }
 
   /**
    * Create access and refresh tokens
    *
    * @param payload payload for generating jwt
+   *
+   * @return an object with `accessToken` and `refreshToken`
    */
-  createTokens(payload: string | object | Buffer): Tokens {
+  private createTokens(payload: string | object | Buffer): Tokens {
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = uuid.v4();
 
@@ -53,11 +57,13 @@ export class AuthService {
   }
 
   /**
-   * Send email verification
+   * Create `emailToken` and send email verification to a user
    *
    * @param user `User` object
+   *
+   * @return a promise
    */
-  async sendVerification(user: User) {
+  private async sendVerification(user: User): Promise<void> {
     // TODO?: create token in mailerService
     // We can create jwt token or can create UUID token and write it to something like Redis
     const emailToken = sign({ email: user.email, id: user.id }, this.configService.get('token.EMAIL_SECRET')!);
@@ -66,6 +72,13 @@ export class AuthService {
     await this.mailerService.sendRegistrationMail(user.email, user.username, emailToken);
   }
 
+  /**
+   * Resend email verification
+   *
+   * @param email user email
+   *
+   * @return a promise
+   */
   async resendVerifyEmail(email: string): Promise<void> {
     const user = await this.usersService.findByEmailOrUsername(email);
 
@@ -75,17 +88,23 @@ export class AuthService {
     this.sendVerification(user);
   }
 
+  /**
+   * Verify a user email
+   *
+   * @param token email token
+   *
+   * @return a promise
+   */
   async verifyEmail(token: string): Promise<void> {
     try {
       const { email } = verify(token, this.configService.get('token.EMAIL_SECRET')!) as { email: string };
 
       const user = await this.usersService.findByEmailOrUsername(email);
 
-      // TODO?: catch if user not found
+      // TODO?: throw an error if user not found
+      if (!user) return;
 
-      if (user) {
-        await this.usersService.updateVerifyEmail(user.email, true);
-      }
+      await this.usersService.updateVerifyEmail(user.email, true);
     } catch (error) {
       if (error instanceof TokenExpiredError) {
         throw new BadRequestException('TOKEN_EXPIRED');
@@ -100,20 +119,20 @@ export class AuthService {
   }
 
   /**
-   * Register user in system.
+   * Register a new user in system.
    * Send email verification
    *
    * @param email user email
    * @param username user username
    * @param password user password
    *
-   * @return A promise to be either resolved with the `User` object or rejected with an error
+   * @return a promise to be either resolved with the `User` object or rejected with an error
    */
   async register(email: string, username: string, password: string): Promise<User> {
     try {
       const user = await this.usersService.createUser(email, username, password);
 
-      // Don't wait for sending a message
+      // Don't wait a message
       this.sendVerification(user);
 
       // We can create tokens and send them to register and login in one step.
@@ -129,14 +148,14 @@ export class AuthService {
   }
 
   /**
-   * Login user to system
+   * Login a user to system and create session
    *
    * @param ip ip address
    * @param userAgent browser user-agent
    * @param emailOrUsername user email or username
    * @param password user password
    *
-   * @return A promise to be either resolved with the tokens or rejected with an error
+   * @return a promise to be either resolved with the `tokens` or rejected with an error
    */
   async login(
     ip: string,
@@ -174,10 +193,26 @@ export class AuthService {
     return tokens;
   }
 
+  /**
+   * Logout and delete session by user id and token
+   *
+   * @param userId user id
+   * @param token refresh token
+   *
+   * @return a promise
+   */
   async logout(userId: number, token: string): Promise<void> {
     await this.sessionsService.clearSessionByToken(userId, token);
   }
 
+  /**
+   * Verify refresh token and create a new object with refresh and access tokens
+   * then update session with this token in database
+   *
+   * @param token refresh token
+   *
+   * @return a promise to be either resolved with the `tokens` object or rejected with an `error`
+   */
   async refreshTokens(token: string): Promise<Tokens> {
     const session = await this.sessionsService.findSession(token);
 
@@ -216,6 +251,13 @@ export class AuthService {
     return tokens;
   }
 
+  /**
+   * Find a user by email or username, create token and send reset password mail
+   *
+   * @param emailOrUsername user email or username
+   *
+   * @return a promise
+   */
   async forgot(emailOrUsername: string): Promise<void> {
     const user = await this.usersService.findByEmailOrUsername(emailOrUsername);
 
@@ -227,22 +269,31 @@ export class AuthService {
     const resetToken = sign({ email: user.email, id: user.id }, this.configService.get('token.RESET_SECRET')!);
     // const resetToken = uuid.v4();
 
+    // Don't wait a message
     this.mailerService.sendResetPasswordMail(user.email, user.username, resetToken);
   }
 
+  /**
+   * Verify reset token and change the user's password
+   *
+   * @param token reset token
+   * @param password user password
+   *
+   * @return a promise
+   */
   async reset(token: string, password: string): Promise<void> {
     try {
       const { email } = verify(token, this.configService.get('token.RESET_SECRET')!) as { email: string };
 
       const user = await this.usersService.findByEmailOrUsername(email);
 
-      if (user) {
-        await this.usersService.updatePassword(user.email, password);
+      if (!user) return;
 
-        this.sessionsService.clearAllSessions(user.id);
+      await this.usersService.updatePassword(user.email, password);
+      await this.sessionsService.clearAllSessions(user.id);
 
-        await this.mailerService.sendPasswordChangedMail(user.email, user.username);
-      }
+      // Don't wait a message
+      this.mailerService.sendPasswordChangedMail(user.email, user.username);
     } catch (error) {
       if (error instanceof TokenExpiredError) {
         throw new BadRequestException('TOKEN_EXPIRED');

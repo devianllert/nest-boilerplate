@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { MailService } from '@app/mail';
-
 import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
@@ -16,6 +15,15 @@ export class MailerService {
     this.loggerService.setContext('MailerService');
   }
 
+  /**
+   * Send a registration mail to a user
+   *
+   * @param email user email
+   * @param username user username
+   * @param token email token
+   *
+   * @return a Promise
+   */
   async sendRegistrationMail(email: string, username: string, token: string): Promise<void> {
     try {
       const link = `${this.configService.get<string>('CLIENT_URL')}/verify/${token}`;
@@ -35,6 +43,15 @@ export class MailerService {
     }
   }
 
+  /**
+   * Send a reset password mail to a user
+   *
+   * @param email user email
+   * @param username user username
+   * @param token reset token
+   *
+   * @return a Promise
+   */
   async sendResetPasswordMail(email: string, username: string, token: string): Promise<void> {
     try {
       const link = `${this.configService.get<string>('CLIENT_URL')}/reset/${token}`;
@@ -54,6 +71,14 @@ export class MailerService {
     }
   }
 
+  /**
+   * Send a password changed mail to a user
+   *
+   * @param email user email
+   * @param username user email
+   *
+   * @return a Promise
+   */
   async sendPasswordChangedMail(email: string, username: string): Promise<void> {
     try {
       await this.mailService.sendMail({

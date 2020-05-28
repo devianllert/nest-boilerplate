@@ -39,7 +39,7 @@ import { UserResetDTO } from './dto/UserReset.dto';
 @Controller('auth')
 @UsePipes(new ValidationPipe({ whitelist: true }))
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('forgot')
   @ApiBadRequestResponse({ description: 'Bad Request' })

@@ -13,8 +13,9 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
   app.use(helmet());
   app.enableCors({
-    origin: configService.get('CLIENT_URL'),
+    maxAge: 86400,
     credentials: true,
+    origin: configService.get('CLIENT_URL'),
   });
 
   const options = new DocumentBuilder()
