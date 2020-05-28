@@ -29,6 +29,13 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Validate user
+   * @param emailOrUsername user email or username
+   * @param password user password
+   *
+   * @return A promise to be either resolved with the `User` object or rejected with false
+   */
   async validateUser(emailOrUsername: string, password: string): Promise<User | false> {
     const user = await this.findByEmailOrUsername(emailOrUsername);
 

@@ -85,10 +85,15 @@ export class AuthController {
   async login(
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
-    @Body() payload: UserLoginDTO,
     @Response() res: ExpressResponse,
+    @Body() payload: UserLoginDTO,
   ): Promise<JwtDTO> {
-    const tokens = await this.authService.login(ip, userAgent, payload);
+    const tokens = await this.authService.login(
+      ip,
+      userAgent,
+      payload.emailOrUsername,
+      payload.password,
+    );
 
     // TODO: Move to decorator
     res.cookie('refreshToken', tokens.refreshToken, {

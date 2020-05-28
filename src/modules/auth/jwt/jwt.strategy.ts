@@ -26,6 +26,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /**
+   * Validate verified jwt payload.
+   * Just check user existing
+   */
   async validate(payload: JWTPayload) {
     const user = await this.usersService.findByEmailOrUsername(payload.email);
 

@@ -2,7 +2,6 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
-  HttpException,
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -25,7 +24,6 @@ import { SessionsService } from '../sessions/sessions.service';
 import { MailerService } from '../mailer/mailer.service';
 
 import { Tokens } from './interfaces/tokens.interface';
-import { UserLoginDTO } from './dto/userLogin.dto';
 import { UserRegisterDTO } from './dto/userRegister.dto';
 import { LoggerService } from '../logger/logger.service';
 
@@ -40,18 +38,11 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async validateUser(payload: UserLoginDTO): Promise<User> {
-    const { emailOrUsername, password } = payload;
-
-    const user = await this.usersService.validateUser(emailOrUsername, password);
-
-    if (!user) {
-      throw new BadRequestException('LOGIN_ERROR');
-    }
-
-    return user;
-  }
-
+  /**
+   * Create access and refresh tokens
+   *
+   * @param payload payload for generating jwt
+   */
   createTokens(payload: string | object | Buffer): Tokens {
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = uuid.v4();
@@ -123,8 +114,27 @@ export class AuthService {
     }
   }
 
-  async login(ip: string, userAgent: string, payload: UserLoginDTO): Promise<Tokens> {
-    const user = await this.validateUser(payload);
+  /**
+   * Login user to system
+   *
+   * @param ip ip address
+   * @param userAgent browser user-agent
+   * @param emailOrUsername user email or username
+   * @param password user password
+   *
+   * @return A promise to be either resolved with the tokens or rejected with an error
+   */
+  async login(
+    ip: string,
+    userAgent: string,
+    emailOrUsername: string,
+    password: string,
+  ): Promise<Tokens> {
+    const user = await this.usersService.validateUser(emailOrUsername, password);
+
+    if (!user) {
+      throw new BadRequestException('LOGIN_ERROR');
+    }
 
     const jwtPayload = {
       id: user.id,
@@ -166,7 +176,7 @@ export class AuthService {
     if (isExpire) {
       await this.sessionsService.clearSessionByToken(session.userId, token);
 
-      throw new HttpException('TOKEN_EXPIRED', 403);
+      throw new UnauthorizedException('TOKEN_EXPIRED');
     }
 
     const user = await this.usersService.findById(session.userId);
@@ -199,7 +209,7 @@ export class AuthService {
       throw new BadRequestException();
     }
 
-    // We can create jwt token or can create UUID token and write it to something like Redis
+    // We need to create jwt/UUID token and write it to something like Redis
     const resetToken = sign({ email: user.email, id: user.id }, this.configService.get('token.RESET_SECRET')!);
     // const resetToken = uuid.v4();
 
