@@ -60,7 +60,7 @@ export class AuthController {
   @ApiBadRequestResponse({ description: 'Bad Request' })
   @ApiOkResponse()
   async register(@Body() payload: UserRegisterDTO): Promise<User> {
-    const user = await this.authService.register(payload);
+    const user = await this.authService.register(payload.email, payload.username, payload.password);
 
     return user;
   }

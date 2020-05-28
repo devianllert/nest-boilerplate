@@ -7,7 +7,6 @@ import { MailerService } from '../mailer/mailer.service';
 import { User } from './users.entity';
 import { UsersRepository } from './users.repository';
 
-import { CreateUserDTO } from './dto/createUser.dto';
 import { UpdateUserDTO } from './dto/updateUser.dto';
 
 @Injectable()
@@ -50,21 +49,11 @@ export class UsersService {
     return user;
   }
 
-  async createUser(payload: CreateUserDTO): Promise<User> {
-    const {
-      email,
-      username,
-      password,
-    } = payload;
-
+  async createUser(email: string, username: string, password: string): Promise<User> {
     const salt = await genSalt(10);
     const hashedPassword = await hash(password, salt);
 
-    const user = await this.usersRepository.createUser({
-      email,
-      username,
-      password: hashedPassword,
-    });
+    const user = await this.usersRepository.createUser(email, username, hashedPassword);
 
     return user;
   }

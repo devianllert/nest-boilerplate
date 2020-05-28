@@ -15,17 +15,16 @@ import {
 } from 'jsonwebtoken';
 import * as uuid from 'uuid';
 
-import { detect } from '../../utils/parseUserAgent';
-
-import { User } from '../users/users.entity';
-
 import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { MailerService } from '../mailer/mailer.service';
-
-import { Tokens } from './interfaces/tokens.interface';
-import { UserRegisterDTO } from './dto/userRegister.dto';
 import { LoggerService } from '../logger/logger.service';
+
+import { detect } from '../../utils/parseUserAgent';
+
+import { User } from '../users/users.entity';
+import { Tokens } from './interfaces/tokens.interface';
+
 
 @Injectable()
 export class AuthService {
@@ -53,6 +52,29 @@ export class AuthService {
     };
   }
 
+  /**
+   * Send email verification
+   *
+   * @param user `User` object
+   */
+  async sendVerification(user: User) {
+    // TODO?: create token in mailerService
+    // We can create jwt token or can create UUID token and write it to something like Redis
+    const emailToken = sign({ email: user.email, id: user.id }, this.configService.get('token.EMAIL_SECRET')!);
+    // const resetToken = uuid.v4();
+
+    await this.mailerService.sendRegistrationMail(user.email, user.username, emailToken);
+  }
+
+  async resendVerifyEmail(email: string): Promise<void> {
+    const user = await this.usersService.findByEmailOrUsername(email);
+
+    if (!user || user.isVerified) throw new BadRequestException();
+
+    // TODO?: send different mail for resending
+    this.sendVerification(user);
+  }
+
   async verifyEmail(token: string): Promise<void> {
     try {
       const { email } = verify(token, this.configService.get('token.EMAIL_SECRET')!) as { email: string };
@@ -77,27 +99,19 @@ export class AuthService {
     }
   }
 
-  async resendVerifyEmail(email: string): Promise<void> {
-    const user = await this.usersService.findByEmailOrUsername(email);
-
-    if (!user || user.isVerified) throw new BadRequestException();
-
-    // TODO?: send different mail for resending
-    this.sendVerification(user);
-  }
-
-  // TODO?: create token in mailerService
-  async sendVerification(user: User) {
-    // We can create jwt token or can create UUID token and write it to something like Redis
-    const emailToken = sign({ email: user.email, id: user.id }, this.configService.get('token.EMAIL_SECRET')!);
-    // const resetToken = uuid.v4();
-
-    await this.mailerService.sendRegistrationMail(user.email, user.username, emailToken);
-  }
-
-  async register(payload: UserRegisterDTO): Promise<User> {
+  /**
+   * Register user in system.
+   * Send email verification
+   *
+   * @param email user email
+   * @param username user username
+   * @param password user password
+   *
+   * @return A promise to be either resolved with the `User` object or rejected with an error
+   */
+  async register(email: string, username: string, password: string): Promise<User> {
     try {
-      const user = await this.usersService.createUser(payload);
+      const user = await this.usersService.createUser(email, username, password);
 
       // Don't wait for sending a message
       this.sendVerification(user);

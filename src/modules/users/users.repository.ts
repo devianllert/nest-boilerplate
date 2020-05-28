@@ -3,8 +3,6 @@ import { createHash } from 'crypto';
 
 import { User } from './users.entity';
 
-import { CreateUserDTO } from './dto/createUser.dto';
-
 @EntityRepository(User)
 export class UsersRepository extends Repository<User> {
   async findByEmailOrUsername(emailOrUsername: string): Promise<User | undefined> {
@@ -16,16 +14,16 @@ export class UsersRepository extends Repository<User> {
     return user;
   }
 
-  async createUser(payload: CreateUserDTO): Promise<User> {
+  async createUser(email: string, username: string, password: string): Promise<User> {
     const user = new User();
 
     const md5 = createHash('md5')
-      .update(payload.email)
+      .update(email)
       .digest('hex');
 
-    user.email = payload.email;
-    user.username = payload.username;
-    user.password = payload.password;
+    user.email = email;
+    user.username = username;
+    user.password = password;
     user.avatar = `https://gravatar.com/avatar/${md5}?s=${200}&d=retro`;
 
     await this.save(user);
